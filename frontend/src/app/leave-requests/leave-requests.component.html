@@ -71,6 +71,12 @@
   </button>
 </form>
 
+<div *ngIf="approveMessage as m" class="message" [class.success]="m.kind === 'success'"
+     [class.error]="m.kind === 'error'" [attr.role]="m.kind === 'error' ? 'alert' : 'status'">
+  {{ m.text }}
+  <button type="button" class="dismiss" aria-label="Dismiss" (click)="approveMessage = null">&times;</button>
+</div>
+
 <div *ngIf="loading">Loading...</div>
 
 <table *ngIf="!loading">
@@ -96,7 +102,9 @@
       <td>{{ r.days }}</td>
       <td>{{ statusLabel(r.status) }}</td>
       <td>
-        <button *ngIf="r.status == 0" (click)="approve(r.id)">Approve</button>
+        <button *ngIf="r.status == 0" (click)="approve(r.id)" [disabled]="approvingIds.has(r.id)">
+          {{ approvingIds.has(r.id) ? 'Approving...' : 'Approve' }}
+        </button>
       </td>
     </tr>
   </tbody>

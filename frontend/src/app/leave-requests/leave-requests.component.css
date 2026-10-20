@@ -59,3 +59,35 @@ button:disabled {
   font-size: 13px;
   margin-top: 4px;
 }
+
+.message {
+  max-width: 480px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.message.success {
+  color: #1e6b3a;
+  background: #e6f4ea;
+}
+
+.message.error {
+  color: #c0392b;
+  background: #fdecea;
+  font-size: 14px;
+  margin-top: 0;
+}
+
+.dismiss {
+  float: right;
+  background: none;
+  color: inherit;
+  padding: 0 4px;
+}
+
+.dismiss:hover {
+  background: none;
+  opacity: 0.7;
+}

@@ -57,6 +57,10 @@ export class LeaveRequestsComponent implements OnInit {
   requests: any[] = [];
   loading = false;
 
+  // Ids of requests whose approval is in flight, and the last approve result to show.
+  approvingIds = new Set<number>();
+  approveMessage: { kind: 'success' | 'error'; text: string } | null = null;
+
   employees: Employee[] = [];
   submitting = false;
   submitted = false;
@@ -164,10 +168,41 @@ export class LeaveRequestsComponent implements OnInit {
 
   // Wired up by the candidate as part of the assignment.
   approve(id: number): void {
-    // TODO (candidate): call POST /api/leave-requests/{id}/approve
-    // and handle loading / error / success without a generic alert.
-    this.http.post<any>(this.apiUrl + '/' + id + '/approve', {}).subscribe(() => {
-      this.load();
+    // Ignore a second click while this request is still in flight.
+    if (this.approvingIds.has(id)) return;
+
+    this.approvingIds.add(id);
+    this.approveMessage = null;
+    this.http.post<any>(this.apiUrl + '/' + id + '/approve', {}).subscribe({
+      next: (updated) => {
+        this.approvingIds.delete(id);
+        // The API returns the updated request, so replace just that row.
+        this.requests = this.requests.map((r) => (r.id === id ? updated : r));
+        this.approveMessage = { kind: 'success', text: `Request #${id} was approved.` };
+      },
+      error: (err: HttpErrorResponse) => {
+        this.approvingIds.delete(id);
+        this.approveMessage = { kind: 'error', text: this.approveErrorText(id, err) };
+        // 409 / 404 mean our copy of the list is stale, so refresh it.
+        if (err.status === 409 || err.status === 404) this.refreshQuietly();
+      }
+    });
+  }
+
+  private approveErrorText(id: number, err: HttpErrorResponse): string {
+    if (err.status === 409) {
+      return typeof err.error === 'string' && err.error
+        ? `Request #${id} was not approved: ${err.error}.`
+        : `Request #${id} was already handled.`;
+    }
+    if (err.status === 404) return `Request #${id} no longer exists.`;
+    return `Could not approve request #${id}. Please try again.`;
+  }
+
+  // Reloads the list without the "Loading..." state, so the table and the message stay visible.
+  private refreshQuietly(): void {
+    this.http.get<any>(this.apiUrl).subscribe((data) => {
+      this.requests = data;
     });
   }
 
