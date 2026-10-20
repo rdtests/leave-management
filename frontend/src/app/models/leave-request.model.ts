@@ -7,6 +7,21 @@ export interface Employee {
   annualQuota: number;
 }
 
+// Mirrors the backend LeaveType enum.
+export enum LeaveType {
+  Vacation = 0,
+  Sick = 1,
+  Unpaid = 2
+}
+
+// Payload for POST /api/leave-requests (mirrors CreateLeaveRequestDto).
+export interface CreateLeaveRequest {
+  employeeId: number;
+  type: LeaveType;
+  startDate: string;
+  endDate: string;
+}
+
 export interface LeaveRequest {
   id: number;
   employeeId: number;

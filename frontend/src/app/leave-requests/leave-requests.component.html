@@ -1,6 +1,75 @@
 <h2>Leave Requests</h2>
 
 <!-- TODO (candidate): add the "new request" form here, with validation. -->
+<form [formGroup]="form" (ngSubmit)="submit()" novalidate class="request-form">
+  <h3>New Request</h3>
+
+  <div class="field">
+    <label for="employeeId">Employee</label>
+    <select id="employeeId" formControlName="employeeId" [class.invalid]="showError('employeeId')">
+      <option [ngValue]="null">Select employee...</option>
+      <option *ngFor="let e of employees" [ngValue]="e.id">{{ e.name }}</option>
+    </select>
+    <div class="error" *ngIf="showError('employeeId')">Please select an employee.</div>
+  </div>
+
+  <div class="field">
+    <label for="type">Leave type</label>
+    <select id="type" formControlName="type" [class.invalid]="showError('type')">
+      <option [ngValue]="null">Select leave type...</option>
+      <option *ngFor="let t of leaveTypes" [ngValue]="t.value">{{ t.label }}</option>
+    </select>
+    <div class="error" *ngIf="showError('type')">Please select a leave type.</div>
+  </div>
+
+  <div class="field">
+    <label for="startDate">Start date</label>
+    <div class="date-input">
+      <input id="startDate" type="text" formControlName="startDate" placeholder="dd/mm/yyyy"
+             autocomplete="off" [class.invalid]="showError('startDate') || showRangeError()" />
+      <button type="button" class="calendar-btn" aria-label="Pick start date"
+              (click)="startPicker.showPicker()">&#128197;</button>
+      <input #startPicker type="date" class="date-picker" tabindex="-1" aria-hidden="true"
+             (change)="pickDate('startDate', startPicker.value)" />
+    </div>
+    <div class="error" *ngIf="showError('startDate')">
+      {{ form.get('startDate')?.hasError('required')
+        ? 'Please enter a start date.'
+        : 'Enter a valid start date as dd/mm/yyyy.' }}
+    </div>
+  </div>
+
+  <div class="field">
+    <label for="endDate">End date</label>
+    <div class="date-input">
+      <input id="endDate" type="text" formControlName="endDate" placeholder="dd/mm/yyyy"
+             autocomplete="off" [class.invalid]="showError('endDate') || showRangeError()" />
+      <button type="button" class="calendar-btn" aria-label="Pick end date"
+              (click)="endPicker.showPicker()">&#128197;</button>
+      <input #endPicker type="date" class="date-picker" tabindex="-1" aria-hidden="true"
+             (change)="pickDate('endDate', endPicker.value)" />
+    </div>
+    <div class="error" *ngIf="showError('endDate')">
+      {{ form.get('endDate')?.hasError('required')
+        ? 'Please enter an end date.'
+        : 'Enter a valid end date as dd/mm/yyyy.' }}
+    </div>
+    <div class="error" *ngIf="showRangeError()">
+      The start date cannot be later than the end date, so the number of days cannot be negative.
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Days</label>
+    <span>{{ days ?? '-' }}</span>
+  </div>
+
+  <div class="error" *ngIf="serverError">{{ serverError }}</div>
+
+  <button type="submit" [disabled]="submitting">
+    {{ submitting ? 'Submitting...' : 'Submit request' }}
+  </button>
+</form>
 
 <div *ngIf="loading">Loading...</div>
 
