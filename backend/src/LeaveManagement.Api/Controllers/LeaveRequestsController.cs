@@ -91,4 +91,26 @@ public class LeaveRequestsController : ControllerBase
 
         return Ok(request);
     }
+
+    // POST /api/leave-requests/{id}/approve
+    [HttpPost("{id}/approve")]
+    public IActionResult Approve(int id)
+    {
+        // Atomic conditional update: the status check and the write happen in a
+        // single statement, so two concurrent approvals cannot both succeed.
+        var updated = _db.LeaveRequests
+            .Where(r => r.Id == id && r.Status == LeaveStatus.Pending)
+            .ExecuteUpdate(s => s.SetProperty(r => r.Status, LeaveStatus.Approved));
+
+        var request = _db.LeaveRequests
+            .AsNoTracking()
+            .FirstOrDefault(r => r.Id == id);
+        if (request == null)
+            return NotFound("Leave request not found");
+
+        if (updated == 0)
+            return Conflict($"Leave request is already {request.Status}");
+
+        return Ok(request);
+    }
 }

@@ -2,6 +2,7 @@ using LeaveManagement.Api.Controllers;
 using LeaveManagement.Api.Data;
 using LeaveManagement.Api.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Xunit;
 
 namespace LeaveManagement.Tests;
@@ -254,6 +255,57 @@ public class LeaveRequestsTests : IClassFixture<TestDatabase>
         Assert.Empty(db.LeaveRequests);
     }
 
+    [Fact]
+    public void Approve_PendingRequest_BecomesApproved()
+    {
+        // Arrange
+        using var db = _database.NewDb();
+        var emp = AddEmployee(db, quota: 20);
+        var id = AddRequest(db, emp, new DateTime(2026, 3, 1), 3, LeaveStatus.Pending);
+        var controller = new LeaveRequestsController(db);
+
+        // Act
+        var result = controller.Approve(id);
+
+        // Assert
+        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.Equal(LeaveStatus.Approved, Assert.IsType<LeaveRequest>(ok.Value).Status);
+        Assert.Equal(LeaveStatus.Approved, db.LeaveRequests.AsNoTracking().Single().Status);
+    }
+
+    [Theory]
+    [InlineData(LeaveStatus.Approved)]
+    [InlineData(LeaveStatus.Rejected)]
+    public void Approve_AlreadyDecided_ReturnsConflictAndKeepsStatus(LeaveStatus status)
+    {
+        // Arrange
+        using var db = _database.NewDb();
+        var emp = AddEmployee(db, quota: 20);
+        var id = AddRequest(db, emp, new DateTime(2026, 3, 1), 3, status);
+        var controller = new LeaveRequestsController(db);
+
+        // Act
+        var result = controller.Approve(id);
+
+        // Assert
+        Assert.IsType<ConflictObjectResult>(result);
+        Assert.Equal(status, db.LeaveRequests.AsNoTracking().Single().Status);
+    }
+
+    [Fact]
+    public void Approve_NonExistingRequest_ReturnsNotFound()
+    {
+        // Arrange
+        using var db = _database.NewDb();
+        var controller = new LeaveRequestsController(db);
+
+        // Act
+        var result = controller.Approve(999);
+
+        // Assert
+        Assert.IsType<NotFoundObjectResult>(result);
+    }
+
     private static Employee AddEmployee(LeaveDbContext db, int quota)
     {
         var emp = new Employee { Name = "Test Emp", AnnualQuota = quota };
@@ -262,11 +314,11 @@ public class LeaveRequestsTests : IClassFixture<TestDatabase>
         return emp;
     }
 
-    private static void AddRequest(
+    private static int AddRequest(
         LeaveDbContext db, Employee emp, DateTime start, int days, LeaveStatus status,
         LeaveType type = LeaveType.Vacation)
     {
-        db.LeaveRequests.Add(new LeaveRequest
+        var request = new LeaveRequest
         {
             EmployeeId = emp.Id,
             Type = type,
@@ -274,8 +326,10 @@ public class LeaveRequestsTests : IClassFixture<TestDatabase>
             EndDate = start.AddDays(days - 1),
             Days = days,
             Status = status
-        });
+        };
+        db.LeaveRequests.Add(request);
         db.SaveChanges();
+        return request.Id;
     }
 
     private static CreateLeaveRequestDto Dto(
